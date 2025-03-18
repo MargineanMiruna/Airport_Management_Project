@@ -6,20 +6,22 @@ import domain.Seat;
 import domain.SeatType;
 
 import java.sql.*;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
 public class FlightRepository implements CrudRepository<Flight> {
+    private Connection conn;
+
     public FlightRepository() {
+        conn = DatabaseConnection.getPostgresConnection();
         createTables();
     }
 
     private void createTables() {
         String createFlightsSQL = "CREATE TABLE IF NOT EXISTS flights (flightId SERIAL PRIMARY KEY, airlineId INT NOT NULL, planeId INT NOT NULL, departure TIME NOT NULL, arrival TIME NOT NULL, origin INT NOT NULL, destination INT NOT NULL, price DOUBLE NOT NULL);";
         String createAvailableSeatsSQL = "CREATE TABLE IF NOT EXISTS available_seats (seatId INT NOT NULL, flightId INT NOT NULL, PRIMARY KEY (seatId, flightId));";
-        try (Connection conn = DatabaseConnection.getPostgresConnection();
-             Statement createStatement = conn.createStatement()) {
+
+        try (Statement createStatement = conn.createStatement()) {
             createStatement.executeUpdate(createFlightsSQL);
             createStatement.executeUpdate(createAvailableSeatsSQL);
         } catch (SQLException e) {
@@ -31,10 +33,9 @@ public class FlightRepository implements CrudRepository<Flight> {
     public void save(Flight entity) {
         String query = "INSERT INTO flights (airlineId, planeId, departure, arrival, origin, destination, price) VALUES (?, ?, ?, ?, ?, ?, ?)";
         String query2 = "INSERT INTO available_seats (seatId, flightId) VALUES (?, ?)";
-        try (Connection conn = DatabaseConnection.getPostgresConnection();
-             PreparedStatement stmt = conn.prepareStatement(query);
-             PreparedStatement stmt2 = conn.prepareStatement(query2);) {
 
+        try (PreparedStatement stmt = conn.prepareStatement(query);
+             PreparedStatement stmt2 = conn.prepareStatement(query2);) {
             stmt.setInt(1, entity.getAirline().getAirlineId());
             stmt.setInt(2, entity.getPlane().getPlaneId());
             stmt.setTimestamp(3, Timestamp.valueOf(entity.getDeparture()));
@@ -60,10 +61,9 @@ public class FlightRepository implements CrudRepository<Flight> {
         String query2 = "SELECT * FROM seats S" +
                 "JOIN available_seats A ON A.seatId = S.seatId " +
                 "WHERE A.flightId = ?";
-        try (Connection conn = DatabaseConnection.getPostgresConnection();
-             PreparedStatement stmt = conn.prepareStatement(query);
-             PreparedStatement stmt2 = conn.prepareStatement(query2);) {
 
+        try (PreparedStatement stmt = conn.prepareStatement(query);
+             PreparedStatement stmt2 = conn.prepareStatement(query2);) {
             AirlineRepository airlineRepository = new AirlineRepository();
             PlaneRepository planeRepository = new PlaneRepository();
             AirportRepository airportRepository = new AirportRepository();
@@ -101,6 +101,7 @@ public class FlightRepository implements CrudRepository<Flight> {
         } catch (SQLException e) {
             e.printStackTrace();
         }
+
         return null;
     }
 
@@ -111,11 +112,10 @@ public class FlightRepository implements CrudRepository<Flight> {
         String query2 = "SELECT * FROM seats S" +
                 "JOIN available_seats A ON A.seatId = S.seatId" +
                 " WHERE A.flightId = ?";
-        try (Connection conn = DatabaseConnection.getPostgresConnection();
-             Statement stmt = conn.createStatement();
+
+        try (Statement stmt = conn.createStatement();
              PreparedStatement stmt2 = conn.prepareStatement(query2);
              ResultSet rs = stmt.executeQuery(query)) {
-
             AirlineRepository airlineRepository = new AirlineRepository();
             PlaneRepository planeRepository = new PlaneRepository();
             AirportRepository airportRepository = new AirportRepository();
@@ -149,15 +149,15 @@ public class FlightRepository implements CrudRepository<Flight> {
         } catch (SQLException e) {
             e.printStackTrace();
         }
+
         return flights;
     }
 
     @Override
     public void update(Flight entity) {
         String query = "UPDATE flights SET departure = ?, arrival = ?, price = ? WHERE flightId = ?";
-        try (Connection conn = DatabaseConnection.getPostgresConnection();
-             PreparedStatement stmt = conn.prepareStatement(query)) {
 
+        try (PreparedStatement stmt = conn.prepareStatement(query)) {
             stmt.setTimestamp(1, Timestamp.valueOf(entity.getDeparture()));
             stmt.setTimestamp(2, Timestamp.valueOf(entity.getArrival()));
             stmt.setDouble(3, entity.getPrice());
@@ -168,30 +168,18 @@ public class FlightRepository implements CrudRepository<Flight> {
     }
 
     public void updateAvailableSeats(Flight entity) {
-        String query = "SELECT * FROM seats S" +
-                "JOIN available_seats A ON A.seatId = S.seatId" +
-                "WHERE A.flightId = ?";
-        String query2 = "DELETE FROM available_seats WHERE seatId = ?";
-        try (Connection conn = DatabaseConnection.getPostgresConnection();
-             PreparedStatement stmt = conn.prepareStatement(query);
+        String query = "DELETE FROM available_seats WHERE flightId = ?";
+        String query2 = "INSERT INTO available_seats (seatId, flightId) VALUES (?, ?)";
+
+        try (PreparedStatement stmt = conn.prepareStatement(query);
              PreparedStatement stmt2 = conn.prepareStatement(query2)) {
-
-            PlaneRepository planeRepository = new PlaneRepository();
             stmt.setInt(1, entity.getFlightId());
-            ResultSet rs = stmt.getResultSet();
+            stmt.executeUpdate();
 
-            while(rs.next()) {
-                Seat seat = new Seat(
-                        rs.getInt("seatId"),
-                        rs.getString("seatNr"),
-                        planeRepository.findById(rs.getInt("planeId")),
-                        SeatType.valueOf(rs.getString("seatType"))
-                );
-
-                if(!entity.getAvailableSeats().contains(seat)) {
-                    stmt2.setInt(1, seat.getSeatId());
-                    stmt2.executeUpdate();
-                }
+            for(Seat s : entity.getAvailableSeats()) {
+                stmt2.setInt(1, s.getSeatId());
+                stmt2.setInt(2, entity.getFlightId());
+                stmt2.executeUpdate();
             }
         } catch (SQLException e) {
             e.printStackTrace();

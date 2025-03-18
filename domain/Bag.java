@@ -1,7 +1,7 @@
 package domain;
 
 public enum Bag {
-    small(5, 0.0), cabin(10, 10.0), check_in(20, 25.0);
+    carry_on(5, 0.0), cabin_bag(10, 10.0), checked_bag(20, 25.0);
 
     private int maxWeight;
     private Double price;
