@@ -1,6 +1,5 @@
 package repository;
 
-import database.DatabaseConnection;
 import domain.Passenger;
 
 import java.sql.*;
@@ -10,8 +9,8 @@ import java.util.List;
 public class PassengerRepository implements CrudRepository<Passenger> {
     private Connection conn;
 
-    public PassengerRepository() {
-        conn = DatabaseConnection.getMySQLConnection();
+    public PassengerRepository(Connection conn) {
+        this.conn = conn;
         createTable();
     }
 

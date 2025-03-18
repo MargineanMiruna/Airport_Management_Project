@@ -1,6 +1,5 @@
 package repository;
 
-import database.DatabaseConnection;
 import domain.Airline;
 
 import java.sql.*;
@@ -8,14 +7,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class AirlineRepository implements CrudRepository<Airline> {
-    public AirlineRepository() {
+    public Connection conn;
+
+    public AirlineRepository(Connection conn) {
+        this.conn = conn;
         createTable();
     }
 
     private void createTable() {
         String createSQL = "CREATE TABLE IF NOT EXISTS airlines (airlineId SERIAL PRIMARY KEY, airlineName VARCHAR(100) NOT NULL, email VARCHAR(100) UNIQUE NOT NULL, phone VARCHAR(15) UNIQUE NOT NULL);";
-        try (Connection conn = DatabaseConnection.getPostgresConnection();
-             Statement createStatement = conn.createStatement()) {
+
+        try (Statement createStatement = conn.createStatement()) {
              createStatement.executeUpdate(createSQL);
         } catch (SQLException e) {
             throw new RuntimeException(e);
@@ -25,13 +27,11 @@ public class AirlineRepository implements CrudRepository<Airline> {
     @Override
     public void save(Airline entity) {
         String query = "INSERT INTO airlines (airlineName, email, phone) VALUES (?, ?, ?)";
-        try (Connection conn = DatabaseConnection.getPostgresConnection();
-             PreparedStatement stmt = conn.prepareStatement(query)) {
 
+        try (PreparedStatement stmt = conn.prepareStatement(query)) {
             stmt.setString(1, entity.getAirlineName());
             stmt.setString(2, entity.getEmail());
             stmt.setString(3, entity.getPhone());
-
             stmt.executeUpdate();
         } catch (SQLException e) {
             e.printStackTrace();
@@ -41,11 +41,11 @@ public class AirlineRepository implements CrudRepository<Airline> {
     @Override
     public Airline findById(int id) {
         String query = "SELECT * FROM airlines WHERE airlineId = ?";
-        try (Connection conn = DatabaseConnection.getPostgresConnection();
-             PreparedStatement stmt = conn.prepareStatement(query)) {
 
+        try (PreparedStatement stmt = conn.prepareStatement(query)) {
             stmt.setInt(1, id);
             ResultSet rs = stmt.executeQuery();
+
             if (rs.next()) {
                 return new Airline(
                         rs.getInt("airlineId"),
@@ -57,6 +57,7 @@ public class AirlineRepository implements CrudRepository<Airline> {
         } catch (SQLException e) {
             e.printStackTrace();
         }
+
         return null;
     }
 
@@ -65,10 +66,8 @@ public class AirlineRepository implements CrudRepository<Airline> {
         List<Airline> airlines = new ArrayList<>();
         String query = "SELECT * FROM airlines";
 
-        try (Connection conn = DatabaseConnection.getPostgresConnection();
-             Statement stmt = conn.createStatement();
+        try (Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(query)) {
-
             while (rs.next()) {
                 airlines.add(new Airline(
                         rs.getInt("airlineId"),
@@ -80,15 +79,15 @@ public class AirlineRepository implements CrudRepository<Airline> {
         } catch (SQLException e) {
             e.printStackTrace();
         }
+
         return airlines;
     }
 
     @Override
     public void update(Airline entity) {
         String query = "UPDATE airlines SET airlineName = ?, email = ?, phone = ? WHERE airlineId = ?";
-        try (Connection conn = DatabaseConnection.getPostgresConnection();
-             PreparedStatement stmt = conn.prepareStatement(query)) {
 
+        try (PreparedStatement stmt = conn.prepareStatement(query)) {
             stmt.setString(1, entity.getAirlineName());
             stmt.setString(2, entity.getEmail());
             stmt.setString(3, entity.getPhone());
@@ -102,9 +101,8 @@ public class AirlineRepository implements CrudRepository<Airline> {
     @Override
     public void delete(int id) {
         String query = "DELETE FROM airlines WHERE airlineId = ?";
-        try (Connection conn = DatabaseConnection.getPostgresConnection();
-             PreparedStatement stmt = conn.prepareStatement(query)) {
 
+        try (PreparedStatement stmt = conn.prepareStatement(query)) {
             stmt.setInt(1, id);
             stmt.executeUpdate();
         } catch (SQLException e) {

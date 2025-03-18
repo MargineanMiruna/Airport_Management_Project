@@ -11,15 +11,39 @@ import java.util.List;
 
 public class FlightRepository implements CrudRepository<Flight> {
     private Connection conn;
+    private AirlineRepository airlineRepository;
+    private PlaneRepository planeRepository;
+    private AirportRepository airportRepository;
 
-    public FlightRepository() {
-        conn = DatabaseConnection.getPostgresConnection();
+    public FlightRepository(Connection conn, AirlineRepository airlineRepository, PlaneRepository planeRepository, AirportRepository airportRepository) {
+        this.conn = conn;
         createTables();
+
+        this.airlineRepository = airlineRepository;
+        this.planeRepository = planeRepository;
+        this.airportRepository = airportRepository;
     }
 
     private void createTables() {
-        String createFlightsSQL = "CREATE TABLE IF NOT EXISTS flights (flightId SERIAL PRIMARY KEY, airlineId INT NOT NULL, planeId INT NOT NULL, departure TIME NOT NULL, arrival TIME NOT NULL, origin INT NOT NULL, destination INT NOT NULL, price DOUBLE NOT NULL);";
-        String createAvailableSeatsSQL = "CREATE TABLE IF NOT EXISTS available_seats (seatId INT NOT NULL, flightId INT NOT NULL, PRIMARY KEY (seatId, flightId));";
+        String createFlightsSQL = "CREATE TABLE IF NOT EXISTS flights (" +
+                "flightId SERIAL PRIMARY KEY, " +
+                "airlineId INT NOT NULL, " +
+                "planeId INT NOT NULL, " +
+                "departure TIME NOT NULL, " +
+                "arrival TIME NOT NULL, " +
+                "origin INT NOT NULL, " +
+                "destination INT NOT NULL, " +
+                "price DOUBLE NOT NULL, " +
+                "FOREIGN KEY(airlineId) REFERENCES airlines(airlineId), " +
+                "FOREIGN KEY(planeId) REFERENCES planes(planeId), " +
+                "FOREIGN KEY(origin) REFERENCES airports(airportId), " +
+                "FOREIGN KEY(destination) REFERENCES airports(airportId));";
+
+        String createAvailableSeatsSQL = "CREATE TABLE IF NOT EXISTS available_seats (seatId INT NOT NULL, " +
+                "flightId INT NOT NULL, " +
+                "PRIMARY KEY (seatId, flightId) " +
+                "FOREIGN KEY(seatId) REFERENCES seats(seatId) " +
+                "FOREIGN KEY(flightId) REFERENCES flights(flightId));";
 
         try (Statement createStatement = conn.createStatement()) {
             createStatement.executeUpdate(createFlightsSQL);
@@ -58,24 +82,17 @@ public class FlightRepository implements CrudRepository<Flight> {
     @Override
     public Flight findById(int id) {
         String query = "SELECT * FROM flights WHERE flightId = ?";
-        String query2 = "SELECT * FROM seats S" +
+        String query2 = "SELECT * FROM seats S " +
                 "JOIN available_seats A ON A.seatId = S.seatId " +
                 "WHERE A.flightId = ?";
 
         try (PreparedStatement stmt = conn.prepareStatement(query);
              PreparedStatement stmt2 = conn.prepareStatement(query2);) {
-            AirlineRepository airlineRepository = new AirlineRepository();
-            PlaneRepository planeRepository = new PlaneRepository();
-            AirportRepository airportRepository = new AirportRepository();
-            Flight flight = null;
-            List<Seat> availableSeats = new ArrayList<>();
-
             stmt.setInt(1, id);
             ResultSet rs = stmt.executeQuery();
-            ResultSet rs2 = stmt2.executeQuery();
 
             if (rs.next()) {
-                flight = new Flight(
+                Flight flight = new Flight(
                         rs.getInt("flightId"),
                         airlineRepository.findById(rs.getInt("airlineId")),
                         planeRepository.findById(rs.getInt("planeId")),
@@ -85,19 +102,23 @@ public class FlightRepository implements CrudRepository<Flight> {
                         airportRepository.findById(rs.getInt("destination")),
                         rs.getDouble("price")
                 );
-            }
 
-            while (rs2.next()) {
-                availableSeats.add(new Seat(
-                        rs2.getInt("seatId"),
-                        rs2.getString("seatNr"),
-                        planeRepository.findById(rs2.getInt("planeId")),
-                        SeatType.valueOf(rs2.getString("seatType"))
-                ));
-            }
+                List<Seat> availableSeats = new ArrayList<>();
+                stmt2.setInt(1, id);
+                ResultSet rs2 = stmt2.executeQuery();
 
-            flight.setAvailableSeats(availableSeats);
-            return flight;
+                while (rs2.next()) {
+                    availableSeats.add(new Seat(
+                            rs2.getInt("seatId"),
+                            rs2.getString("seatNr"),
+                            planeRepository.findById(rs2.getInt("planeId")),
+                            SeatType.valueOf(rs2.getString("seatType"))
+                    ));
+                }
+
+                flight.setAvailableSeats(availableSeats);
+                return flight;
+            }
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -109,17 +130,13 @@ public class FlightRepository implements CrudRepository<Flight> {
     public List<Flight> findAll() {
         List<Flight> flights = new ArrayList<>();
         String query = "SELECT * FROM flights";
-        String query2 = "SELECT * FROM seats S" +
-                "JOIN available_seats A ON A.seatId = S.seatId" +
-                " WHERE A.flightId = ?";
+        String query2 = "SELECT * FROM seats S " +
+                "JOIN available_seats A ON A.seatId = S.seatId " +
+                "WHERE A.flightId = ?";
 
         try (Statement stmt = conn.createStatement();
              PreparedStatement stmt2 = conn.prepareStatement(query2);
              ResultSet rs = stmt.executeQuery(query)) {
-            AirlineRepository airlineRepository = new AirlineRepository();
-            PlaneRepository planeRepository = new PlaneRepository();
-            AirportRepository airportRepository = new AirportRepository();
-
             while (rs.next()) {
                 Flight flight = new Flight(
                         rs.getInt("flightId"),
@@ -190,10 +207,9 @@ public class FlightRepository implements CrudRepository<Flight> {
     public void delete(int id) {
         String query = "DELETE FROM flights WHERE flightId = ?";
         String query2 = "DELETE FROM available_seats WHERE flightId = ?";
-        try (Connection conn = DatabaseConnection.getPostgresConnection();
-             PreparedStatement stmt = conn.prepareStatement(query);
-             PreparedStatement stmt2 = conn.prepareStatement(query2);) {
 
+        try (PreparedStatement stmt = conn.prepareStatement(query);
+             PreparedStatement stmt2 = conn.prepareStatement(query2);) {
             stmt.setInt(1, id);
             stmt.executeUpdate();
             stmt2.setInt(1, id);
