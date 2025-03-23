@@ -14,6 +14,9 @@ public class Flight {
     private Double price;
     private List<Seat> availableSeats;
 
+    public Flight() {
+    }
+
     public Flight(int flightId, Airline airline, Plane plane, LocalDateTime departure, LocalDateTime arrival, Airport origin, Airport destination, Double price) {
         this.flightId = flightId;
         this.airline = airline;
@@ -24,6 +27,17 @@ public class Flight {
         this.destination = destination;
         this.price = price;
         this.availableSeats = this.plane.getSeatList();
+    }
+
+    public Flight(Airline airline, Plane plane, LocalDateTime departure, LocalDateTime arrival, Airport origin, Airport destination, Double price) {
+        this.airline = airline;
+        this.plane = plane;
+        this.departure = departure;
+        this.arrival = arrival;
+        this.origin = origin;
+        this.destination = destination;
+        this.price = price;
+        this.availableSeats = plane.getSeatList();
     }
 
     public int getFlightId() {

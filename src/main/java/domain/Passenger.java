@@ -21,6 +21,19 @@ public class Passenger {
         this.country = country;
     }
 
+    public Passenger(String firstName, String lastName, String email, LocalDate birthDate, String city, String country) {
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.email = email;
+        this.birthDate = birthDate;
+        this.city = city;
+        this.country = country;
+    }
+
+    public String toString() {
+        return firstName + ", " + lastName + ", " + email + ", " + birthDate + ", " + city + ", " + country;
+    }
+
     public int getPassengerId() {
         return passengerId;
     }

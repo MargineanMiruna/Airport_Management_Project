@@ -9,7 +9,7 @@ public class DatabaseConnection {
     private static final String POSTGRES_USER = "postgres";
     private static final String POSTGRES_PASSWORD = "Calorifer_123";
 
-    private static final String MYSQL_URL = "jdbc:mysql://localhost:3306/Booking_Management";
+    private static final String MYSQL_URL = "jdbc:mysql://127.0.0.1:3306/Bookings_Management";
     private static final String MYSQL_USER = "root";
     private static final String MYSQL_PASSWORD = "Calorifer_123";
 

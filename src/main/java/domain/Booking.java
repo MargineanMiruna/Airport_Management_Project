@@ -20,6 +20,14 @@ public class Booking {
         this.bags = bags;
     }
 
+    public Booking(Flight flight, Passenger passenger, LocalDateTime bookingTime, Seat seat, List<Bag> bags) {
+        this.flight = flight;
+        this.passenger = passenger;
+        this.bookingTime = bookingTime;
+        this.seat = seat;
+        this.bags = bags;
+    }
+
     public int getBookingId() {
         return bookingId;
     }

@@ -13,6 +13,16 @@ public class Seat {
         this.seatType = seatType;
     }
 
+    public Seat(String seatNr, Plane plane, SeatType seatType) {
+        this.seatNr = seatNr;
+        this.plane = plane;
+        this.seatType = seatType;
+    }
+
+    public String toString() {
+        return seatNr + ", " + seatType.toString() + ", " + seatType.getPrice();
+    }
+
     public int getSeatId() {
         return seatId;
     }

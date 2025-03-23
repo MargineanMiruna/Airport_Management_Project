@@ -7,12 +7,26 @@ public class Airport {
     private String city;
     private String country;
 
+    public Airport() {
+    }
+
     public Airport(int airportId, String airportName, String airportCode, String city, String country) {
         this.airportId = airportId;
         this.airportName = airportName;
         this.airportCode = airportCode;
         this.city = city;
         this.country = country;
+    }
+
+    public Airport(String airportName, String airportCode, String city, String country) {
+        this.airportName = airportName;
+        this.airportCode = airportCode;
+        this.city = city;
+        this.country = country;
+    }
+
+    public String toString() {
+        return airportName + ", " + airportCode + ", " + city + ", " + country;
     }
 
     public int getAirportId() {

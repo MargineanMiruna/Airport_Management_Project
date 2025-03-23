@@ -6,11 +6,24 @@ public class Airline {
     private String email;
     private String phone;
 
+    public Airline() {
+    }
+
     public Airline(int airlineId, String airlineName, String email, String phone) {
         this.airlineId = airlineId;
         this.airlineName = airlineName;
         this.email = email;
         this.phone = phone;
+    }
+
+    public Airline(String airlineName, String email, String phone) {
+        this.airlineName = airlineName;
+        this.email = email;
+        this.phone = phone;
+    }
+
+    public String toString() {
+        return airlineName + ", " + email + ", " + phone;
     }
 
     public int getAirlineId() {

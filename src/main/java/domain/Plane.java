@@ -1,6 +1,7 @@
 package domain;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class Plane {
     private int planeId;
@@ -9,11 +10,27 @@ public class Plane {
     private int numOfSeats;
     private List<Seat> seatList;
 
+    public Plane() {
+    }
+
     public Plane(int planeId, String planeCode, Airline airline, int numOfSeats) {
         this.planeId = planeId;
         this.planeCode = planeCode;
         this.airline = airline;
         this.numOfSeats = numOfSeats;
+    }
+
+    public Plane(String planeCode, Airline airline, int numOfSeats) {
+        this.planeCode = planeCode;
+        this.airline = airline;
+        this.numOfSeats = numOfSeats;
+    }
+
+    public String toString() {
+        if(seatList != null)
+            return planeCode + ", " + airline.getAirlineName() + ", " + numOfSeats + " / " + seatList.stream().map(Seat::toString).collect(Collectors.joining(";"));
+        else
+            return planeCode + ", " + airline.getAirlineName() + ", " + numOfSeats;
     }
 
     public int getPlaneId() {
