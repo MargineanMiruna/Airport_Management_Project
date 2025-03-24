@@ -1,5 +1,6 @@
 package domain;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -13,9 +14,6 @@ public class Flight {
     private Airport destination;
     private Double price;
     private List<Seat> availableSeats;
-
-    public Flight() {
-    }
 
     public Flight(int flightId, Airline airline, Plane plane, LocalDateTime departure, LocalDateTime arrival, Airport origin, Airport destination, Double price) {
         this.flightId = flightId;
@@ -74,6 +72,22 @@ public class Flight {
 
     public List<Seat> getAvailableSeats() {
         return availableSeats;
+    }
+
+    public Long getDuration() {
+        return Duration.between(departure, arrival).toMinutes();
+    }
+
+    public void setDeparture(LocalDateTime departure) {
+        this.departure = departure;
+    }
+
+    public void setArrival(LocalDateTime arrival) {
+        this.arrival = arrival;
+    }
+
+    public void setPrice(Double price) {
+        this.price = price;
     }
 
     public void setAvailableSeats(List<Seat> availableSeats) {

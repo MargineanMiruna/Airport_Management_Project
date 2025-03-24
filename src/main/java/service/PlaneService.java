@@ -18,24 +18,39 @@ public class PlaneService {
         this.airlineRepository = airlineRepository;
     }
 
-    public void createPlane(String planeCode, String airlineId, String numOfSeats, List<String> seatTypes) {
+    public void createPlane(String planeCode, String airlineId, String numOfSeats, String firstClass, String businessClass, String premiumEconomy) {
         Plane plane = new Plane(planeCode, airlineRepository.findById(Integer.parseInt(airlineId)), Integer.parseInt(numOfSeats));
-        List<Seat> seatList = createSeats(seatTypes, plane);
+        List<Seat> seatList = createSeats(Integer.parseInt(numOfSeats), Integer.parseInt(firstClass), Integer.parseInt(businessClass), Integer.parseInt(premiumEconomy), plane);
         plane.setSeatList(seatList);
         planeRepository.save(plane);
     }
 
-    private List<Seat> createSeats(List<String> seatTypes, Plane plane) {
+    private List<Seat> createSeats(int numOfSeats, int firstClass, int businessClass, int premiumEconomy, Plane plane) {
         List<Seat> seatList = new ArrayList<>();
         int row = 1;
         int seatCode = 'A';
+        SeatType seatType;
 
-        for (String seatType : seatTypes) {
+        for (int i = 1; i <= numOfSeats; i++) {
+            if (i < firstClass) {
+                seatType = SeatType.first;
+            }
+            else if (i < businessClass) {
+                seatType = SeatType.business;
+            }
+            else if (i < premiumEconomy) {
+                seatType = SeatType.premium_economy;
+            }
+            else {
+                seatType = SeatType.economy;
+            }
+
             seatList.add(new Seat(
                     row + String.valueOf(seatCode),
                     plane,
-                    SeatType.valueOf(seatType)
+                    seatType
             ));
+
             if (seatCode == 'F') {
                 row++;
                 seatCode = 'A';
@@ -55,11 +70,10 @@ public class PlaneService {
         return planeRepository.findAll();
     }
 
-    public void updatePlane(String id, String planeCode, String airlineId, String numOfSeats) {
-        Plane plane = getPlane(id);
-        Plane updatedPlane = new Plane(planeCode, airlineRepository.findById(Integer.parseInt(airlineId)), Integer.parseInt(numOfSeats));
-        updatedPlane.setSeatList(plane.getSeatList());
-        planeRepository.update(updatedPlane);
+    public void updatePlane(String id, String planeCode) {
+        Plane plane = planeRepository.findById(Integer.parseInt(id));
+        plane.setPlaneCode(planeCode);
+        planeRepository.update(plane);
     }
 
     public void deletePlane(String id) {

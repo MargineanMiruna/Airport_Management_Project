@@ -23,7 +23,7 @@ public class AirportRepository implements CrudRepository<Airport> {
             airportName VARCHAR(100) NOT NULL,
             airportCode VARCHAR(5) UNIQUE NOT NULL,
             city VARCHAR(100) NOT NULL,
-            country VARCHAR(100) NOT NULL
+            country VARCHAR(100) NOT NULL,
             version INTEGER DEFAULT 1);""";
         String createMySQL = """
             CREATE TABLE IF NOT EXISTS airports (
@@ -31,7 +31,7 @@ public class AirportRepository implements CrudRepository<Airport> {
             airportName VARCHAR(100) NOT NULL,
             airportCode VARCHAR(5) UNIQUE NOT NULL,
             city VARCHAR(100) NOT NULL,
-            country VARCHAR(100) NOT NULL
+            country VARCHAR(100) NOT NULL,
             version INTEGER DEFAULT 1);""";
 
         try {
@@ -57,7 +57,7 @@ public class AirportRepository implements CrudRepository<Airport> {
 
     @Override
     public void save(Airport entity) {
-        String query = "INSERT INTO airports (airportName, airportCode, city, country, version) VALUES (%s, %s, %s, %s, %s)";
+        String query = "INSERT INTO airports (airportName, airportCode, city, country, version) VALUES (?, ?, ?, ?, ?)";
 
         try {
             PreparedStatement postgresStmt = postgresConn.prepareStatement(query);
@@ -92,7 +92,7 @@ public class AirportRepository implements CrudRepository<Airport> {
 
     @Override
     public Airport findById(int id) {
-        String query = "SELECT * FROM airports WHERE airportId = %s";
+        String query = "SELECT * FROM airports WHERE airportId = ?";
 
         try {
             postgresConn.setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
@@ -109,6 +109,8 @@ public class AirportRepository implements CrudRepository<Airport> {
                         rs.getString("country")
                 );
             }
+
+            postgresConn.commit();
 
         } catch (SQLException e) {
             System.out.println("Transaction failed: " + e.getMessage());
@@ -136,6 +138,9 @@ public class AirportRepository implements CrudRepository<Airport> {
                         rs.getString("country")
                 ));
             }
+
+            postgresConn.commit();
+
         } catch (SQLException e) {
             System.out.println("Transaction failed: " + e.getMessage());
         }
@@ -145,11 +150,11 @@ public class AirportRepository implements CrudRepository<Airport> {
 
     @Override
     public void update(Airport entity) {
-        String select = "SELECT * FROM airports WHERE airportId = %s FOR UPDATE";
+        String select = "SELECT * FROM airports WHERE airportId = ? FOR UPDATE";
         String query = """
             UPDATE airports
-            SET airportName = %s, airportCode = %s, version = version + 1
-            WHERE airportId = %s AND version = %s
+            SET airportName = ?, airportCode = ?, version = version + 1
+            WHERE airportId = ? AND version = ?
         """;
 
         try {
@@ -157,24 +162,29 @@ public class AirportRepository implements CrudRepository<Airport> {
             postgresSelectStmt.setInt(1, entity.getAirportId());
             ResultSet prs = postgresSelectStmt.executeQuery();
 
-            PreparedStatement postgresStmt = postgresConn.prepareStatement(query);
-            postgresStmt.setString(1, entity.getAirportName());
-            postgresStmt.setString(2, entity.getAirportCode());
-            postgresStmt.setInt(3, entity.getAirportId());
-            postgresStmt.setInt(4, prs.getInt("version"));
-            postgresStmt.executeUpdate();
-            postgresConn.commit();
+            if (prs.next()) {
+                PreparedStatement postgresStmt = postgresConn.prepareStatement(query);
+                postgresStmt.setString(1, entity.getAirportName());
+                postgresStmt.setString(2, entity.getAirportCode());
+                postgresStmt.setInt(3, entity.getAirportId());
+                postgresStmt.setInt(4, prs.getInt("version"));
+                postgresStmt.executeUpdate();
+            }
 
             PreparedStatement mySelectStmt = myConn.prepareStatement(select);
             mySelectStmt.setInt(1, entity.getAirportId());
             ResultSet mrs = mySelectStmt.executeQuery();
 
-            PreparedStatement myStmt = myConn.prepareStatement(query);
-            myStmt.setString(1, entity.getAirportName());
-            myStmt.setString(2, entity.getAirportCode());
-            myStmt.setInt(3, entity.getAirportId());
-            myStmt.setInt(4, mrs.getInt("version"));
-            myStmt.executeUpdate();
+            if (mrs.next()) {
+                PreparedStatement myStmt = myConn.prepareStatement(query);
+                myStmt.setString(1, entity.getAirportName());
+                myStmt.setString(2, entity.getAirportCode());
+                myStmt.setInt(3, entity.getAirportId());
+                myStmt.setInt(4, mrs.getInt("version"));
+                myStmt.executeUpdate();
+            }
+
+            postgresConn.commit();
             myConn.commit();
 
         } catch (SQLException e) {
@@ -190,7 +200,7 @@ public class AirportRepository implements CrudRepository<Airport> {
 
     @Override
     public void delete(int id) {
-        String query = "DELETE FROM airports WHERE airportId = %s";
+        String query = "DELETE FROM airports WHERE airportId = ?";
 
         try {
             PreparedStatement postgresStmt = postgresConn.prepareStatement(query);

@@ -25,8 +25,10 @@ public class AirportService {
         return airportRepository.findAll();
     }
 
-    public void updateAirport(String id, String airportName, String airportCode, String city, String country) {
-        Airport airport = new Airport(Integer.parseInt(id), airportName, airportCode, city, country);
+    public void updateAirport(String id, String airportName, String airportCode) {
+        Airport airport = airportRepository.findById(Integer.parseInt(id));
+        airport.setAirportName(airportName);
+        airport.setAirportCode(airportCode);
         airportRepository.update(airport);
     }
 

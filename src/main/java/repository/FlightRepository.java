@@ -1,8 +1,6 @@
 package repository;
 
-import domain.Flight;
-import domain.Seat;
-import domain.SeatType;
+import domain.*;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -11,18 +9,11 @@ import java.util.List;
 public class FlightRepository implements CrudRepository<Flight> {
     private final Connection postgresConn;
     private final Connection myConn;
-    private final AirlineRepository airlineRepository;
-    private final PlaneRepository planeRepository;
-    private final AirportRepository airportRepository;
 
-    public FlightRepository(Connection postgresConn, Connection myConn, AirlineRepository airlineRepository, PlaneRepository planeRepository, AirportRepository airportRepository) {
+    public FlightRepository(Connection postgresConn, Connection myConn) {
         this.postgresConn = postgresConn;
         this.myConn = myConn;
         createTables();
-
-        this.airlineRepository = airlineRepository;
-        this.planeRepository = planeRepository;
-        this.airportRepository = airportRepository;
     }
 
     private void createTables() {
@@ -89,8 +80,8 @@ public class FlightRepository implements CrudRepository<Flight> {
 
     @Override
     public void save(Flight entity) {
-        String query = "INSERT INTO flights (airlineId, planeId, departure, arrival, origin, destination, price, version) VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING flightId";
-        String query2 = "INSERT INTO available_seats (seatId, flightId) VALUES (%s, %s)";
+        String query = "INSERT INTO flights (airlineId, planeId, departure, arrival, origin, destination, price, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING flightId";
+        String query2 = "INSERT INTO available_seats (seatId, flightId) VALUES (?, ?)";
 
         try {
             PreparedStatement postgresStmt = postgresConn.prepareStatement(query);
@@ -148,11 +139,21 @@ public class FlightRepository implements CrudRepository<Flight> {
 
     @Override
     public Flight findById(int id) {
-        String query = "SELECT * FROM flights WHERE flightId = %s";
+        String query = """
+            SELECT f.flightId, f.departure, f.arrival, f.price, a.airlineId, a.airlineName, a.email, a.phone, p.planeId, p.planeCode, p.numOfSeats,
+                   o.airportId AS originId, o.airportName AS originName, o.airportCode AS originCode, o.city AS originCity, o.country AS originCountry,
+                   d.airportId AS destinationId, d.airportName AS destinationName, d.airportCode AS destinationCode, d.City AS destinationCity, d.country AS destinationCountry
+            FROM flights f
+            JOIN airlines a ON f.airlineId = a.airlineId
+            JOIN planes p ON f.planeId = p.planeId
+            JOIN airports o ON f.origin = o.airportId
+            JOIN airports d ON f.destination = d.airportId
+            WHERE f.flightId = ?
+        """;;
         String query2 = """
             SELECT * FROM seats S
             JOIN available_seats A ON A.seatId = S.seatId
-            WHERE A.flightId = %s
+            WHERE A.flightId = ?
         """;
 
         try {
@@ -163,14 +164,18 @@ public class FlightRepository implements CrudRepository<Flight> {
             ResultSet rs = stmt.executeQuery();
 
             if (rs.next()) {
+                Airline airline = new Airline(rs.getInt("airlineId"), rs.getString("airlineName"), rs.getString("email"), rs.getString("phone"));
+                Plane plane = new Plane(rs.getInt("planeId"), rs.getString("planeCode"), airline, rs.getInt("numOfSeats"));
+                Airport origin = new Airport(rs.getInt("originId"), rs.getString("originName"), rs.getString("originCode"), rs.getString("originCity"), rs.getString("originCountry"));
+                Airport destination = new Airport(rs.getInt("destinationId"), rs.getString("destinationName"), rs.getString("destinationCode"), rs.getString("destinationCity"), rs.getString("destinationCountry"));
                 Flight flight = new Flight(
                         rs.getInt("flightId"),
-                        airlineRepository.findById(rs.getInt("airlineId")),
-                        planeRepository.findById(rs.getInt("planeId")),
+                        airline,
+                        plane,
                         rs.getTimestamp("departure").toLocalDateTime(),
                         rs.getTimestamp("arrival").toLocalDateTime(),
-                        airportRepository.findById(rs.getInt("origin")),
-                        airportRepository.findById(rs.getInt("destination")),
+                        origin,
+                        destination,
                         rs.getDouble("price")
                 );
 
@@ -182,7 +187,7 @@ public class FlightRepository implements CrudRepository<Flight> {
                     availableSeats.add(new Seat(
                             rs2.getInt("seatId"),
                             rs2.getString("seatNr"),
-                            planeRepository.findById(rs2.getInt("planeId")),
+                            plane,
                             SeatType.valueOf(rs2.getString("seatType"))
                     ));
                 }
@@ -190,6 +195,9 @@ public class FlightRepository implements CrudRepository<Flight> {
                 flight.setAvailableSeats(availableSeats);
                 return flight;
             }
+
+            postgresConn.commit();
+
         } catch (SQLException e) {
             System.out.println("Transaction failed: " + e.getMessage());
         }
@@ -200,11 +208,20 @@ public class FlightRepository implements CrudRepository<Flight> {
     @Override
     public List<Flight> findAll() {
         List<Flight> flights = new ArrayList<>();
-        String query = "SELECT * FROM flights";
+        String query = """
+            SELECT f.flightId, f.departure, f.arrival, f.price, a.airlineId, a.airlineName, a.email, a.phone, p.planeId, p.planeCode, p.numOfSeats,
+                   o.airportId AS originId, o.airportName AS originName, o.airportCode AS originCode, o.city AS originCity, o.country AS originCountry,
+                   d.airportId AS destinationId, d.airportName AS destinationName, d.airportCode AS destinationCode, d.City AS destinationCity, d.country AS destinationCountry
+            FROM flights f
+            JOIN airlines a ON f.airlineId = a.airlineId
+            JOIN planes p ON f.planeId = p.planeId
+            JOIN airports o ON f.origin = o.airportId
+            JOIN airports d ON f.destination = d.airportId
+        """;
         String query2 = """
-            SELECT * FROM seats S
-            JOIN available_seats A ON A.seatId = S.seatId
-            WHERE A.flightId = %s
+            SELECT s.* FROM seats s
+            JOIN available_seats a ON a.seatId = s.seatId
+            WHERE a.flightId = ?
         """;
 
         try {
@@ -214,14 +231,18 @@ public class FlightRepository implements CrudRepository<Flight> {
             ResultSet rs = stmt.executeQuery(query);
 
             while (rs.next()) {
+                Airline airline = new Airline(rs.getInt("airlineId"), rs.getString("airlineName"), rs.getString("email"), rs.getString("phone"));
+                Plane plane = new Plane(rs.getInt("planeId"), rs.getString("planeCode"), airline, rs.getInt("numOfSeats"));
+                Airport origin = new Airport(rs.getInt("originId"), rs.getString("originName"), rs.getString("originCode"), rs.getString("originCity"), rs.getString("originCountry"));
+                Airport destination = new Airport(rs.getInt("destinationId"), rs.getString("destinationName"), rs.getString("destinationCode"), rs.getString("destinationCity"), rs.getString("destinationCountry"));
                 Flight flight = new Flight(
                         rs.getInt("flightId"),
-                        airlineRepository.findById(rs.getInt("airlineId")),
-                        planeRepository.findById(rs.getInt("planeId")),
+                        airline,
+                        plane,
                         rs.getTimestamp("departure").toLocalDateTime(),
                         rs.getTimestamp("arrival").toLocalDateTime(),
-                        airportRepository.findById(rs.getInt("origin")),
-                        airportRepository.findById(rs.getInt("destination")),
+                        origin,
+                        destination,
                         rs.getDouble("price")
                 );
 
@@ -233,7 +254,7 @@ public class FlightRepository implements CrudRepository<Flight> {
                     availableSeats.add(new Seat(
                             rs2.getInt("seatId"),
                             rs2.getString("seatNr"),
-                            planeRepository.findById(rs2.getInt("planeId")),
+                            plane,
                             SeatType.valueOf(rs2.getString("seatType"))
                     ));
                 }
@@ -241,6 +262,9 @@ public class FlightRepository implements CrudRepository<Flight> {
                 flight.setAvailableSeats(availableSeats);
                 flights.add(flight);
             }
+
+            postgresConn.commit();
+
         } catch (SQLException e) {
             System.out.println("Transaction failed: " + e.getMessage());
         }
@@ -250,11 +274,11 @@ public class FlightRepository implements CrudRepository<Flight> {
 
     @Override
     public void update(Flight entity) {
-        String select = "SELECT * FROM flights WHERE flightId = %s FOR UPDATE";
+        String select = "SELECT * FROM flights WHERE flightId = ? FOR UPDATE";
         String query = """
             UPDATE flights
-            SET departure = %s, arrival = %s, price = %s, version = version + 1
-            WHERE flightId = %s AND version = %s
+            SET departure = ?, arrival = ?, price = ?, version = version + 1
+            WHERE flightId = ? AND version = ?
         """;
 
         try {
@@ -262,26 +286,31 @@ public class FlightRepository implements CrudRepository<Flight> {
             postgresSelectStmt.setInt(1, entity.getFlightId());
             ResultSet prs = postgresSelectStmt.executeQuery();
 
-            PreparedStatement postgresStmt = postgresConn.prepareStatement(query);
-            postgresStmt.setTimestamp(1, Timestamp.valueOf(entity.getDeparture()));
-            postgresStmt.setTimestamp(2, Timestamp.valueOf(entity.getArrival()));
-            postgresStmt.setDouble(3, entity.getPrice());
-            postgresStmt.setInt(4, entity.getFlightId());
-            postgresStmt.setInt(5, prs.getInt("version"));
-            postgresStmt.executeUpdate();
-            postgresConn.commit();
+            if (prs.next()) {
+                PreparedStatement postgresStmt = postgresConn.prepareStatement(query);
+                postgresStmt.setTimestamp(1, Timestamp.valueOf(entity.getDeparture()));
+                postgresStmt.setTimestamp(2, Timestamp.valueOf(entity.getArrival()));
+                postgresStmt.setDouble(3, entity.getPrice());
+                postgresStmt.setInt(4, entity.getFlightId());
+                postgresStmt.setInt(5, prs.getInt("version"));
+                postgresStmt.executeUpdate();
+            }
 
             PreparedStatement mySelectStmt = myConn.prepareStatement(select);
             mySelectStmt.setInt(1, entity.getFlightId());
             ResultSet mrs = mySelectStmt.executeQuery();
 
-            PreparedStatement myStmt = myConn.prepareStatement(query);
-            myStmt.setTimestamp(1, Timestamp.valueOf(entity.getDeparture()));
-            myStmt.setTimestamp(2, Timestamp.valueOf(entity.getArrival()));
-            myStmt.setDouble(3, entity.getPrice());
-            myStmt.setInt(4, entity.getFlightId());
-            myStmt.setInt(5, mrs.getInt("version"));
-            myStmt.executeUpdate();
+            if (mrs.next()) {
+                PreparedStatement myStmt = myConn.prepareStatement(query);
+                myStmt.setTimestamp(1, Timestamp.valueOf(entity.getDeparture()));
+                myStmt.setTimestamp(2, Timestamp.valueOf(entity.getArrival()));
+                myStmt.setDouble(3, entity.getPrice());
+                myStmt.setInt(4, entity.getFlightId());
+                myStmt.setInt(5, mrs.getInt("version"));
+                myStmt.executeUpdate();
+            }
+
+            postgresConn.commit();
             myConn.commit();
 
         } catch (SQLException e) {
@@ -296,9 +325,9 @@ public class FlightRepository implements CrudRepository<Flight> {
     }
 
     public void updateAvailableSeats(Flight entity) {
-        String select = "SELECT * FROM available_seats WHERE flightId = %s FOR UPDATE";
-        String delete = "DELETE FROM available_seats WHERE flightId = %s";
-        String insert = "INSERT INTO available_seats (seatId, flightId) VALUES (%s, %s)";
+        String select = "SELECT * FROM available_seats WHERE flightId = ? FOR UPDATE";
+        String delete = "DELETE FROM available_seats WHERE flightId = ?";
+        String insert = "INSERT INTO available_seats (seatId, flightId) VALUES (?, ?)";
 
         try {
             PreparedStatement postgresSelectStmt = postgresConn.prepareStatement(select);
@@ -344,7 +373,7 @@ public class FlightRepository implements CrudRepository<Flight> {
 
     @Override
     public void delete(int id) {
-        String query = "DELETE FROM flights WHERE flightId = %s";
+        String query = "DELETE FROM flights WHERE flightId = ?";
 
         try {
             PreparedStatement postgresStmt = postgresConn.prepareStatement(query);

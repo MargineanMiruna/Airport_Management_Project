@@ -7,9 +7,6 @@ public class Airport {
     private String city;
     private String country;
 
-    public Airport() {
-    }
-
     public Airport(int airportId, String airportName, String airportCode, String city, String country) {
         this.airportId = airportId;
         this.airportName = airportName;
@@ -23,10 +20,6 @@ public class Airport {
         this.airportCode = airportCode;
         this.city = city;
         this.country = country;
-    }
-
-    public String toString() {
-        return airportName + ", " + airportCode + ", " + city + ", " + country;
     }
 
     public int getAirportId() {
@@ -47,5 +40,13 @@ public class Airport {
 
     public String getCountry() {
         return country;
+    }
+
+    public void setAirportName(String airportName) {
+        this.airportName = airportName;
+    }
+
+    public void setAirportCode(String airportCode) {
+        this.airportCode = airportCode;
     }
 }

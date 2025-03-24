@@ -8,7 +8,10 @@ import repository.FlightRepository;
 
 import repository.PlaneRepository;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 public class FlightService {
@@ -24,8 +27,10 @@ public class FlightService {
         this.planeRepository = planeRepository;
     }
 
-    public void createFlight(String airlineId, String planeId, String departure, String arrival, String origin, String destination, String price) {
-        Flight flight = new Flight(airlineRepository.findById(Integer.parseInt(airlineId)), planeRepository.findById(Integer.parseInt(planeId)), LocalDateTime.parse(departure), LocalDateTime.parse(arrival), airportRepository.findById(Integer.parseInt(origin)), airportRepository.findById(Integer.parseInt(destination)), Double.parseDouble(price));
+    public void createFlight(String airlineId, String planeId, String origin, String destination, String departureDate, String departureTime, String arrivalDate, String arrivalTime, String price) {
+        LocalDateTime departure = LocalDateTime.parse(departureDate +"T"+ departureTime);
+        LocalDateTime arrival = LocalDateTime.parse(arrivalDate +"T"+ arrivalTime);
+        Flight flight = new Flight(airlineRepository.findById(Integer.parseInt(airlineId)), planeRepository.findById(Integer.parseInt(planeId)), departure, arrival, airportRepository.findById(Integer.parseInt(origin)), airportRepository.findById(Integer.parseInt(destination)), Double.parseDouble(price));
         flightRepository.save(flight);
     }
 
@@ -37,8 +42,45 @@ public class FlightService {
         return flightRepository.findAll();
     }
 
-    public void updateFlight(String id, String airlineId, String planeId, String departure, String arrival, String origin, String destination, String price) {
-        Flight flight = new Flight(Integer.parseInt(id), airlineRepository.findById(Integer.parseInt(airlineId)), planeRepository.findById(Integer.parseInt(planeId)), LocalDateTime.parse(departure), LocalDateTime.parse(arrival), airportRepository.findById(Integer.parseInt(origin)), airportRepository.findById(Integer.parseInt(destination)), Double.parseDouble(price));
+    public List<Flight> getFilteredFlights(String origin, String destination, String date, String airline, String sortBy) {
+        List<Flight> flights = flightRepository.findAll();
+
+        if (!origin.equals("Any")) {
+            flights = flights.stream().filter(f -> f.getOrigin().getAirportId() == Integer.parseInt(origin)).toList();
+        }
+        if (!destination.equals("Any")) {
+            flights = flights.stream().filter(f -> f.getDestination().getAirportId() == Integer.parseInt(destination)).toList();
+        }
+        if (!date.equals("Any")) {
+            flights = flights.stream().filter(f -> f.getDeparture().toLocalDate() == LocalDate.parse(date)).toList();
+        }
+        if (!airline.equals("Any")) {
+            flights = flights.stream().filter(f -> f.getAirline().getAirlineId() == Integer.parseInt(airline)).toList();
+        }
+
+        if (sortBy.equals("Lowest price")) {
+            flights.sort(Comparator.comparingDouble(Flight::getPrice));
+        }
+        else if (sortBy.equals("Highest price")) {
+            flights.sort(Comparator.comparingDouble(Flight::getPrice).reversed());
+        }
+        else if (sortBy.equals("Departure time")) {
+            flights.sort(Comparator.comparing(Flight::getDeparture).reversed());
+        }
+        else if (sortBy.equals("Duration")) {
+            flights.sort(Comparator.comparingLong(Flight::getDuration));
+        }
+
+        return flights;
+    }
+
+    public void updateFlight(String id, String departureDate, String departureTime, String arrivalDate, String arrivalTime, String price) {
+        Flight flight = flightRepository.findById(Integer.parseInt(id));
+        LocalDateTime departure = LocalDateTime.parse(departureDate +"T"+ departureTime);
+        LocalDateTime arrival = LocalDateTime.parse(arrivalDate +"T"+ arrivalTime);
+        flight.setDeparture(departure);
+        flight.setArrival(arrival);
+        flight.setPrice(Double.parseDouble(price));
         flightRepository.update(flight);
     }
 

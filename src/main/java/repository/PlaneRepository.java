@@ -1,5 +1,6 @@
 package repository;
 
+import domain.Airline;
 import domain.Plane;
 import domain.Seat;
 import domain.SeatType;
@@ -11,12 +12,10 @@ import java.util.List;
 public class PlaneRepository implements CrudRepository<Plane> {
     private final Connection postgresConn;
     private final Connection myConn;
-    private final AirlineRepository airlineRepository;
 
-    public PlaneRepository(Connection postgresConn, Connection myConn, AirlineRepository airlineRepository) {
+    public PlaneRepository(Connection postgresConn, Connection myConn) {
         this.postgresConn = postgresConn;
         this.myConn = myConn;
-        this.airlineRepository = airlineRepository;
         createTables();
     }
 
@@ -77,9 +76,9 @@ public class PlaneRepository implements CrudRepository<Plane> {
 
     @Override
     public void save(Plane entity) {
-        String postgresQuery = "INSERT INTO planes (planeCode, airlineId, numOfSeats, version) VALUES (%s, %s, %s, %s) RETURNING planeId";
-        String myQuery = "INSERT INTO planes (planeCode, airlineId, numOfSeats, version) VALUES (%s, %s, %s, %s)";
-        String seatsQuery = "INSERT INTO seats (seatNr, planeId, seatType) VALUES (%s, %s, %s)";
+        String postgresQuery = "INSERT INTO planes (planeCode, airlineId, numOfSeats, version) VALUES (?, ?, ?, ?) RETURNING planeId";
+        String myQuery = "INSERT INTO planes (planeCode, airlineId, numOfSeats, version) VALUES (?, ?, ?, ?)";
+        String seatsQuery = "INSERT INTO seats (seatNr, planeId, seatType) VALUES (?, ?, ?)";
 
         try {
             PreparedStatement postgresStmt = postgresConn.prepareStatement(postgresQuery);
@@ -132,7 +131,11 @@ public class PlaneRepository implements CrudRepository<Plane> {
 
     @Override
     public Plane findById(int id) {
-        String query = "SELECT * FROM planes WHERE planeId = ?";
+        String query = """
+            SELECT p.*, a.*
+            FROM planes p
+            JOIN airlines a ON a.airlineId = p.airlineId
+            WHERE planeId = ?""";
         String query2 = "SELECT * FROM seats WHERE planeId = ?";
 
         try {
@@ -145,10 +148,11 @@ public class PlaneRepository implements CrudRepository<Plane> {
             ResultSet rs = stmt.executeQuery();
 
             if (rs.next()) {
+                Airline airline = new Airline(rs.getInt("airlineId"), rs.getString("airlineName"), rs.getString("email"), rs.getString("phone"));
                 Plane plane = new Plane(
                         rs.getInt("planeId"),
                         rs.getString("planeCode"),
-                        airlineRepository.findById(rs.getInt("airlineId")),
+                        airline,
                         rs.getInt("numOfSeats")
                 );
 
@@ -167,6 +171,9 @@ public class PlaneRepository implements CrudRepository<Plane> {
                 plane.setSeatList(seats);
                 return plane;
             }
+
+            postgresConn.commit();
+
         } catch (SQLException e) {
             System.out.println("Transaction failed: " + e.getMessage());
         }
@@ -177,8 +184,12 @@ public class PlaneRepository implements CrudRepository<Plane> {
     @Override
     public List<Plane> findAll() {
         List<Plane> planes = new ArrayList<>();
-        String query = "SELECT * FROM planes";
-        String query2 = "SELECT * FROM seats WHERE planeId = %s";
+        String query = """
+            SELECT p.*, a.*
+            FROM planes p
+            JOIN airlines a ON a.airlineId = p.airlineId
+            """;
+        String query2 = "SELECT * FROM seats WHERE planeId = ?";
 
         try {
             postgresConn.setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
@@ -187,10 +198,11 @@ public class PlaneRepository implements CrudRepository<Plane> {
             ResultSet rs = stmt.executeQuery(query);
 
             while (rs.next()) {
+                Airline airline = new Airline(rs.getInt("airlineId"), rs.getString("airlineName"), rs.getString("email"), rs.getString("phone"));
                 Plane plane = new Plane(
                         rs.getInt("planeId"),
                         rs.getString("planeCode"),
-                        airlineRepository.findById(rs.getInt("airlineId")),
+                        airline,
                         rs.getInt("numOfSeats")
                 );
 
@@ -210,6 +222,9 @@ public class PlaneRepository implements CrudRepository<Plane> {
                 plane.setSeatList(seats);
                 planes.add(plane);
             }
+
+            postgresConn.commit();
+
         } catch (SQLException e) {
             System.out.println("Transaction failed: " + e.getMessage());
         }
@@ -219,11 +234,11 @@ public class PlaneRepository implements CrudRepository<Plane> {
 
     @Override
     public void update(Plane entity) {
-        String select = "SELECT * FROM planes WHERE planeId = %s FOR UPDATE";
+        String select = "SELECT * FROM planes WHERE planeId = ? FOR UPDATE";
         String query = """
             UPDATE planes
-            SET planeCode = %s, airlineId = %s, version = version + 1
-            WHERE planeId = %s AND version = %s
+            SET planeCode = ?, version = version + 1
+            WHERE planeId = ? AND version = ?
         """;
 
         try {
@@ -231,24 +246,27 @@ public class PlaneRepository implements CrudRepository<Plane> {
             postgresSelectStmt.setInt(1, entity.getPlaneId());
             ResultSet prs = postgresSelectStmt.executeQuery();
 
-            PreparedStatement postgresStmt = postgresConn.prepareStatement(query);
-            postgresStmt.setString(1, entity.getPlaneCode());
-            postgresStmt.setInt(2, entity.getAirline().getAirlineId());
-            postgresStmt.setInt(3, entity.getPlaneId());
-            postgresStmt.setInt(4, prs.getInt("version"));
-            postgresStmt.executeUpdate();
-            postgresConn.commit();
+            if (prs.next()) {
+                PreparedStatement postgresStmt = postgresConn.prepareStatement(query);
+                postgresStmt.setString(1, entity.getPlaneCode());
+                postgresStmt.setInt(2, entity.getPlaneId());
+                postgresStmt.setInt(3, prs.getInt("version"));
+                postgresStmt.executeUpdate();
+            }
 
             PreparedStatement mySelectStmt = myConn.prepareStatement(select);
             mySelectStmt.setInt(1, entity.getPlaneId());
             ResultSet mrs = mySelectStmt.executeQuery();
 
-            PreparedStatement myStmt = myConn.prepareStatement(query);
-            myStmt.setString(1, entity.getPlaneCode());
-            myStmt.setInt(2, entity.getAirline().getAirlineId());
-            myStmt.setInt(3, entity.getPlaneId());
-            myStmt.setInt(4, mrs.getInt("version"));
-            myStmt.executeUpdate();
+            if (mrs.next()) {
+                PreparedStatement myStmt = myConn.prepareStatement(query);
+                myStmt.setString(1, entity.getPlaneCode());
+                myStmt.setInt(2, entity.getPlaneId());
+                myStmt.setInt(3, mrs.getInt("version"));
+                myStmt.executeUpdate();
+            }
+
+            postgresConn.commit();
             myConn.commit();
 
         } catch (SQLException e) {
@@ -264,7 +282,7 @@ public class PlaneRepository implements CrudRepository<Plane> {
 
     @Override
     public void delete(int id) {
-        String query = "DELETE FROM planes WHERE planeId = %s";
+        String query = "DELETE FROM planes WHERE planeId = ?";
 
         try {
             PreparedStatement postgresStmt = postgresConn.prepareStatement(query);

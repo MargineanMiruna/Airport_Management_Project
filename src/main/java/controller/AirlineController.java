@@ -1,6 +1,9 @@
 package controller;
 
+import domain.Airline;
 import service.AirlineService;
+
+import java.util.List;
 
 public class AirlineController {
     private final AirlineService airlineService;
@@ -9,20 +12,23 @@ public class AirlineController {
         this.airlineService = airlineService;
     }
 
-    public void createAirline(String airlineData) {
-        airlineService.createAirline(airlineData);
+    public void createAirline(String airlineName, String email, String phone) {
+        airlineService.createAirline(airlineName, email, phone);
     }
 
-    public String getAirline(String id) {
+    public Airline getAirline(String id) {
         return airlineService.getAirline(id);
     }
 
-    public String getAllAirlines() {
-        return airlineService.getAllAirlines();
+    public void getAllAirlines() {
+        List<Airline> airlines = airlineService.getAllAirlines();
+        for (Airline airline : airlines) {
+            System.out.println(airline.getAirlineId() + ")" + airline.getAirlineName());
+        }
     }
 
-    public void updateAirline(String airlineData) {
-        airlineService.updateAirline(airlineData);
+    public void updateAirline(String id, String airlineName, String email, String phone) {
+        airlineService.updateAirline(id, airlineName, email, phone);
     }
 
     public void deleteAirline(String id) {

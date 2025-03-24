@@ -10,9 +10,6 @@ public class Plane {
     private int numOfSeats;
     private List<Seat> seatList;
 
-    public Plane() {
-    }
-
     public Plane(int planeId, String planeCode, Airline airline, int numOfSeats) {
         this.planeId = planeId;
         this.planeCode = planeCode;
@@ -24,13 +21,6 @@ public class Plane {
         this.planeCode = planeCode;
         this.airline = airline;
         this.numOfSeats = numOfSeats;
-    }
-
-    public String toString() {
-        if(seatList != null)
-            return planeCode + ", " + airline.getAirlineName() + ", " + numOfSeats + " / " + seatList.stream().map(Seat::toString).collect(Collectors.joining(";"));
-        else
-            return planeCode + ", " + airline.getAirlineName() + ", " + numOfSeats;
     }
 
     public int getPlaneId() {
@@ -51,6 +41,10 @@ public class Plane {
 
     public List<Seat> getSeatList() {
         return seatList;
+    }
+
+    public void setPlaneCode(String planeCode) {
+        this.planeCode = planeCode;
     }
 
     public void setSeatList(List<Seat> seatList) {

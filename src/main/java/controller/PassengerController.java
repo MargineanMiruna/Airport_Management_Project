@@ -1,5 +1,6 @@
 package controller;
 
+import domain.Passenger;
 import service.PassengerService;
 
 public class PassengerController {
@@ -9,20 +10,16 @@ public class PassengerController {
         this.passengerService = passengerService;
     }
 
-    public void createPassenger(String passengerData) {
-        passengerService.createPassenger(passengerData);
+    public void createPassenger(String firstName, String lastName, String email, String birthDate, String city, String country) {
+        passengerService.createPassenger(firstName, lastName, email, birthDate, city, country);
     }
 
-    public String getPassenger(String id) {
-        return passengerService.getPassenger(id);
+    public Passenger getPassengerByEmail(String email) {
+        return passengerService.getPassengerByEmail(email);
     }
 
-    public String getAllPassengers() {
-        return passengerService.getAllPassengers();
-    }
-
-    public void updatePassenger(String passengerData) {
-        passengerService.updatePassenger(passengerData);
+    public void updatePassenger(String id, String firstName, String lastName, String email, String birthDate, String city, String country) {
+        passengerService.updatePassenger(id, firstName, lastName, email, birthDate, city, country);
     }
 
     public void deletePassenger(String id) {

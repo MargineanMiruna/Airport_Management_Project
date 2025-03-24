@@ -61,7 +61,7 @@ public class PassengerRepository implements CrudRepository<Passenger> {
 
     @Override
     public void save(Passenger entity) {
-        String query = "INSERT INTO passengers (firstName, lastName, email, birthDate, city, country, version) VALUES (%s, %s, %s, %s, %s, %s, %s)";
+        String query = "INSERT INTO passengers (firstName, lastName, email, birthDate, city, country, version) VALUES (?, ?, ?, ?, ?, ?, ?)";
 
         try{
             PreparedStatement postgresStmt = postgresConn.prepareStatement(query);
@@ -100,7 +100,7 @@ public class PassengerRepository implements CrudRepository<Passenger> {
 
     @Override
     public Passenger findById(int id) {
-        String query = "SELECT * FROM passengers WHERE passengerId = %s";
+        String query = "SELECT * FROM passengers WHERE passengerId = ?";
 
         try {
             postgresConn.setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
@@ -119,6 +119,38 @@ public class PassengerRepository implements CrudRepository<Passenger> {
                         rs.getString("country")
                 );
             }
+
+            postgresConn.commit();
+
+        } catch (SQLException e) {
+            System.out.println("Transaction failed: " + e.getMessage());
+        }
+
+        return null;
+    }
+
+    public Passenger findByEmail(String email) {
+        String query = "SELECT * FROM passengers WHERE email = ?";
+
+        try {
+            postgresConn.setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
+            PreparedStatement stmt = postgresConn.prepareStatement(query);
+            stmt.setString(1, email);
+            ResultSet rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                return new Passenger(
+                        rs.getInt("passengerId"),
+                        rs.getString("firstName"),
+                        rs.getString("lastName"),
+                        rs.getString("email"),
+                        rs.getDate("birthDate").toLocalDate(),
+                        rs.getString("city"),
+                        rs.getString("country")
+                );
+            }
+
+            postgresConn.commit();
 
         } catch (SQLException e) {
             System.out.println("Transaction failed: " + e.getMessage());
@@ -149,6 +181,8 @@ public class PassengerRepository implements CrudRepository<Passenger> {
                 ));
             }
 
+            postgresConn.commit();
+
         } catch (SQLException e) {
             System.out.println("Transaction failed: " + e.getMessage());
         }
@@ -158,11 +192,11 @@ public class PassengerRepository implements CrudRepository<Passenger> {
 
     @Override
     public void update(Passenger entity) {
-        String select = "SELECT * FROM passengers WHERE passengerId = %s FOR UPDATE";
+        String select = "SELECT * FROM passengers WHERE passengerId = ? FOR UPDATE";
         String query = """
             UPDATE passengers
-            SET firstName = %s, lastName = %s, email = %s, birthDate = %s, city = %s, country = %s, version = version + 1
-            WHERE passengerId = %s AND version = %s
+            SET firstName = ?, lastName = ?, email = ?, birthDate = ?, city = ?, country = ?, version = version + 1
+            WHERE passengerId = ? AND version = ?
         """;
 
         try {
@@ -170,32 +204,37 @@ public class PassengerRepository implements CrudRepository<Passenger> {
             postgresSelectStmt.setInt(1, entity.getPassengerId());
             ResultSet prs = postgresSelectStmt.executeQuery();
 
-            PreparedStatement postgresStmt = postgresConn.prepareStatement(query);
-            postgresStmt.setString(1, entity.getFirstName());
-            postgresStmt.setString(2, entity.getLastName());
-            postgresStmt.setString(3, entity.getEmail());
-            postgresStmt.setDate(4, Date.valueOf(entity.getBirthDate()));
-            postgresStmt.setString(5, entity.getCity());
-            postgresStmt.setString(6, entity.getCountry());
-            postgresStmt.setInt(7, entity.getPassengerId());
-            postgresStmt.setInt(8, prs.getInt("version"));
-            postgresStmt.executeUpdate();
-            postgresConn.commit();
+            if (prs.next()) {
+                PreparedStatement postgresStmt = postgresConn.prepareStatement(query);
+                postgresStmt.setString(1, entity.getFirstName());
+                postgresStmt.setString(2, entity.getLastName());
+                postgresStmt.setString(3, entity.getEmail());
+                postgresStmt.setDate(4, Date.valueOf(entity.getBirthDate()));
+                postgresStmt.setString(5, entity.getCity());
+                postgresStmt.setString(6, entity.getCountry());
+                postgresStmt.setInt(7, entity.getPassengerId());
+                postgresStmt.setInt(8, prs.getInt("version"));
+                postgresStmt.executeUpdate();
+            }
 
             PreparedStatement mySelectStmt = myConn.prepareStatement(select);
             mySelectStmt.setInt(1, entity.getPassengerId());
             ResultSet mrs = mySelectStmt.executeQuery();
 
-            PreparedStatement myStmt = myConn.prepareStatement(query);
-            myStmt.setString(1, entity.getFirstName());
-            myStmt.setString(2, entity.getLastName());
-            myStmt.setString(3, entity.getEmail());
-            myStmt.setDate(4, Date.valueOf(entity.getBirthDate()));
-            myStmt.setString(5, entity.getCity());
-            myStmt.setString(6, entity.getCountry());
-            myStmt.setInt(7, entity.getPassengerId());
-            myStmt.setInt(8, mrs.getInt("version"));
-            myStmt.executeUpdate();
+            if (mrs.next()) {
+                PreparedStatement myStmt = myConn.prepareStatement(query);
+                myStmt.setString(1, entity.getFirstName());
+                myStmt.setString(2, entity.getLastName());
+                myStmt.setString(3, entity.getEmail());
+                myStmt.setDate(4, Date.valueOf(entity.getBirthDate()));
+                myStmt.setString(5, entity.getCity());
+                myStmt.setString(6, entity.getCountry());
+                myStmt.setInt(7, entity.getPassengerId());
+                myStmt.setInt(8, mrs.getInt("version"));
+                myStmt.executeUpdate();
+            }
+
+            postgresConn.commit();
             myConn.commit();
 
         } catch (SQLException e) {
@@ -211,7 +250,7 @@ public class PassengerRepository implements CrudRepository<Passenger> {
 
     @Override
     public void delete(int id) {
-        String query = "DELETE FROM passengers WHERE passengerId = %s";
+        String query = "DELETE FROM passengers WHERE passengerId = ?";
 
         try {
             PreparedStatement postgresStmt = postgresConn.prepareStatement(query);

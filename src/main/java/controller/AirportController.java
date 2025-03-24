@@ -1,6 +1,9 @@
 package controller;
 
+import domain.Airport;
 import service.AirportService;
+
+import java.util.List;
 
 public class AirportController {
     private final AirportService airportService;
@@ -9,20 +12,19 @@ public class AirportController {
         this.airportService = airportService;
     }
 
-    public void createAirport(String airportData) {
-        airportService.createAirport(airportData);
+    public void createAirport(String airportName, String airportCode, String city, String country) {
+        airportService.createAirport(airportName, airportCode, country, city);
     }
 
-    public String getAirport(String id) {
-        return airportService.getAirport(id);
+    public void getAllAirports() {
+        List<Airport> airports = airportService.getAllAirports();
+        for (Airport airport : airports) {
+            System.out.println(airport.getAirportId() + ") " + airport.getAirportName());
+        }
     }
 
-    public String getAllAirports() {
-        return airportService.getAllAirports();
-    }
-
-    public void updateAirport(String airportData) {
-        airportService.updateAirport(airportData);
+    public void updateAirport(String id, String airportName, String airportCode) {
+        airportService.updateAirport(id, airportName, airportCode);
     }
 
     public void deleteAirport(String id) {

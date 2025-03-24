@@ -22,11 +22,11 @@ public class BookingService {
         this.passengerRepository = passengerRepository;
     }
 
-    public void createBooking(String flightId, String passengerId, String bookingTime, String seatId, List<String> bagsString) {
+    public void createBooking(String flightId, int passengerId, String seatId, List<String> bagsString) {
         Flight flight = flightRepository.findById(Integer.parseInt(flightId));
         Seat seat = flight.getAvailableSeats().stream().filter(s -> s.getSeatId() == Integer.parseInt(seatId)).findFirst().get();
         List<Bag> bags = bagsString.stream().map(Bag::valueOf).toList();
-        Booking booking = new Booking(flight, passengerRepository.findById(Integer.parseInt(passengerId)), LocalDateTime.parse(bookingTime), seat, bags);
+        Booking booking = new Booking(flight, passengerRepository.findById(passengerId), LocalDateTime.now(), seat, bags);
         bookingRepository.save(booking);
     }
 

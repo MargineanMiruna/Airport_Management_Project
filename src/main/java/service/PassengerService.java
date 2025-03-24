@@ -22,6 +22,10 @@ public class PassengerService {
         return passengerRepository.findById(Integer.parseInt(id));
     }
 
+    public Passenger getPassengerByEmail(String email) {
+        return passengerRepository.findByEmail(email);
+    }
+
     public List<Passenger> getAllPassengers() {
         return passengerRepository.findAll();
     }
