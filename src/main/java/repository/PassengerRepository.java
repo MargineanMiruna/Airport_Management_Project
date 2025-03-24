@@ -101,6 +101,7 @@ public class PassengerRepository implements CrudRepository<Passenger> {
     @Override
     public Passenger findById(int id) {
         String query = "SELECT * FROM passengers WHERE passengerId = ?";
+        Passenger passenger = null;
 
         try {
             postgresConn.setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
@@ -109,7 +110,7 @@ public class PassengerRepository implements CrudRepository<Passenger> {
             ResultSet rs = stmt.executeQuery();
 
             if (rs.next()) {
-                return new Passenger(
+                passenger = new Passenger(
                         rs.getInt("passengerId"),
                         rs.getString("firstName"),
                         rs.getString("lastName"),
@@ -126,11 +127,12 @@ public class PassengerRepository implements CrudRepository<Passenger> {
             System.out.println("Transaction failed: " + e.getMessage());
         }
 
-        return null;
+        return passenger;
     }
 
     public Passenger findByEmail(String email) {
         String query = "SELECT * FROM passengers WHERE email = ?";
+        Passenger passenger = null;
 
         try {
             postgresConn.setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
@@ -139,7 +141,7 @@ public class PassengerRepository implements CrudRepository<Passenger> {
             ResultSet rs = stmt.executeQuery();
 
             if (rs.next()) {
-                return new Passenger(
+                passenger = new Passenger(
                         rs.getInt("passengerId"),
                         rs.getString("firstName"),
                         rs.getString("lastName"),
@@ -156,7 +158,7 @@ public class PassengerRepository implements CrudRepository<Passenger> {
             System.out.println("Transaction failed: " + e.getMessage());
         }
 
-        return null;
+        return passenger;
     }
 
     @Override

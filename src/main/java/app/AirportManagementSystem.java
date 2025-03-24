@@ -33,11 +33,11 @@ public class AirportManagementSystem {
         PassengerRepository passengerRepository = new PassengerRepository(postgresConn, myConn);
         PassengerService passengerService = new PassengerService(passengerRepository);
         PassengerController passengerController = new PassengerController(passengerService);
-        BookingRepository bookingRepository = new BookingRepository(postgresConn, myConn);
+        BookingRepository bookingRepository = new BookingRepository(postgresConn, myConn, flightRepository);
         BookingService bookingService = new BookingService(bookingRepository, flightRepository, passengerRepository);
         BookingController bookingController = new BookingController(bookingService);
         HomeController homeController = new HomeController(airlineController, airportController, flightController, passengerController, planeController, bookingController);
 
-        homeController.run();
+        homeController.performConcurrentTransactions();
     }
 }

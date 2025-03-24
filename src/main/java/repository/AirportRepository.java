@@ -93,6 +93,7 @@ public class AirportRepository implements CrudRepository<Airport> {
     @Override
     public Airport findById(int id) {
         String query = "SELECT * FROM airports WHERE airportId = ?";
+        Airport airport = null;
 
         try {
             postgresConn.setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
@@ -101,7 +102,7 @@ public class AirportRepository implements CrudRepository<Airport> {
             ResultSet rs = stmt.executeQuery();
 
             if (rs.next()) {
-                return new Airport(
+                airport = new Airport(
                         rs.getInt("airportId"),
                         rs.getString("airportName"),
                         rs.getString("airportCode"),
@@ -116,7 +117,7 @@ public class AirportRepository implements CrudRepository<Airport> {
             System.out.println("Transaction failed: " + e.getMessage());
         }
 
-        return null;
+        return airport;
     }
 
     @Override

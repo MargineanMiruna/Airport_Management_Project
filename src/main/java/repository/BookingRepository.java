@@ -11,11 +11,14 @@ import java.util.stream.Collectors;
 public class BookingRepository implements CrudRepository<Booking> {
     private final Connection postgresConn;
     private final Connection myConn;
+    private final FlightRepository flightRepository;
 
-    public BookingRepository(Connection postgresConn, Connection myConn) {
+    public BookingRepository(Connection postgresConn, Connection myConn, FlightRepository flightRepository) {
         this.postgresConn = postgresConn;
         this.myConn = myConn;
         createTable();
+
+        this.flightRepository = flightRepository;
     }
 
     private void createTable() {
@@ -94,6 +97,8 @@ public class BookingRepository implements CrudRepository<Booking> {
             myStmt.executeUpdate();
             myConn.commit();
 
+            flightRepository.updateAvailableSeats(entity.getFlight().getFlightId(), entity.getSeat().getSeatId());
+
         } catch (SQLException e) {
             try {
                 postgresConn.rollback();
@@ -123,6 +128,7 @@ public class BookingRepository implements CrudRepository<Booking> {
             JOIN planes p ON p.planeId = s.planeId
             JOIN airline a ON a.airlineId = p.airlineId
             WHERE seatId = ?""";
+        Booking booking = null;
 
         try {
             postgresConn.setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
@@ -155,7 +161,7 @@ public class BookingRepository implements CrudRepository<Booking> {
                     Airport destination = new Airport(rs.getInt("destinationId"), rs.getString("destinationName"), rs.getString("destinationCode"), rs.getString("destinationCity"), rs.getString("destinationCountry"));
                     Flight flight = new Flight(rs.getInt("flightId"), airline, plane, rs.getTimestamp("departure").toLocalDateTime(), rs.getTimestamp("arrival").toLocalDateTime(), origin, destination, rs.getDouble("price"));
                     Passenger passenger = new Passenger(rs.getInt("passengerId"), rs.getString("firstName"), rs.getString("lastName"), rs.getString("email"), rs.getDate("birthDate").toLocalDate(), rs.getString("city"), rs.getString("country"));
-                    return new Booking(
+                    booking = new Booking(
                             rs.getInt("bookingId"),
                             flight,
                             passenger,
@@ -172,7 +178,7 @@ public class BookingRepository implements CrudRepository<Booking> {
             System.out.println("Transaction failed: " + e.getMessage());
         }
 
-        return null;
+        return booking;
     }
 
     @Override

@@ -88,6 +88,7 @@ public class AirlineRepository implements CrudRepository<Airline> {
     @Override
     public Airline findById(int id) {
         String query = "SELECT * FROM airlines WHERE airlineId = ?";
+        Airline airline = null;
 
         try {
             postgresConn.setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
@@ -96,7 +97,7 @@ public class AirlineRepository implements CrudRepository<Airline> {
             ResultSet rs = stmt.executeQuery();
 
             if (rs.next()) {
-                return new Airline(
+                airline = new Airline(
                         rs.getInt("airlineId"),
                         rs.getString("airlineName"),
                         rs.getString("email"),
@@ -110,7 +111,7 @@ public class AirlineRepository implements CrudRepository<Airline> {
             System.out.println("Transaction failed: " + e.getMessage());
         }
 
-        return null;
+        return airline;
     }
 
     @Override

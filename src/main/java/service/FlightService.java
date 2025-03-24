@@ -84,18 +84,6 @@ public class FlightService {
         flightRepository.update(flight);
     }
 
-    public void updateAvailableSeats(String id, List<Seat> NonAvailableSeats) {
-        Flight flight = flightRepository.findById(Integer.parseInt(id));
-        List<Seat> AvailableSeats = flight.getAvailableSeats();
-
-        for (Seat seat : NonAvailableSeats) {
-            AvailableSeats.remove(seat);
-        }
-
-        flight.setAvailableSeats(AvailableSeats);
-        flightRepository.updateAvailableSeats(flight);
-    }
-
     public void deleteFlight(String id) {
         flightRepository.delete(Integer.parseInt(id));
     }

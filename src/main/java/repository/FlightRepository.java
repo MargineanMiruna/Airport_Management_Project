@@ -80,13 +80,14 @@ public class FlightRepository implements CrudRepository<Flight> {
 
     @Override
     public void save(Flight entity) {
-        String query = "INSERT INTO flights (airlineId, planeId, departure, arrival, origin, destination, price, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING flightId";
+        String postgresqQuery = "INSERT INTO flights (airlineId, planeId, departure, arrival, origin, destination, price, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING flightId";
+        String myQuery = "INSERT INTO flights (airlineId, planeId, departure, arrival, origin, destination, price, version) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
         String query2 = "INSERT INTO available_seats (seatId, flightId) VALUES (?, ?)";
 
         try {
-            PreparedStatement postgresStmt = postgresConn.prepareStatement(query);
+            PreparedStatement postgresStmt = postgresConn.prepareStatement(postgresqQuery);
             PreparedStatement postgresStmt2 = postgresConn.prepareStatement(query2);
-            PreparedStatement myStmt = myConn.prepareStatement(query);
+            PreparedStatement myStmt = myConn.prepareStatement(myQuery);
             PreparedStatement myStmt2 = myConn.prepareStatement(query2);
 
             postgresStmt.setInt(1, entity.getAirline().getAirlineId());
@@ -155,6 +156,7 @@ public class FlightRepository implements CrudRepository<Flight> {
             JOIN available_seats A ON A.seatId = S.seatId
             WHERE A.flightId = ?
         """;
+        Flight flight = null;
 
         try {
             postgresConn.setTransactionIsolation(Connection.TRANSACTION_SERIALIZABLE);
@@ -168,7 +170,7 @@ public class FlightRepository implements CrudRepository<Flight> {
                 Plane plane = new Plane(rs.getInt("planeId"), rs.getString("planeCode"), airline, rs.getInt("numOfSeats"));
                 Airport origin = new Airport(rs.getInt("originId"), rs.getString("originName"), rs.getString("originCode"), rs.getString("originCity"), rs.getString("originCountry"));
                 Airport destination = new Airport(rs.getInt("destinationId"), rs.getString("destinationName"), rs.getString("destinationCode"), rs.getString("destinationCity"), rs.getString("destinationCountry"));
-                Flight flight = new Flight(
+                flight = new Flight(
                         rs.getInt("flightId"),
                         airline,
                         plane,
@@ -193,7 +195,6 @@ public class FlightRepository implements CrudRepository<Flight> {
                 }
 
                 flight.setAvailableSeats(availableSeats);
-                return flight;
             }
 
             postgresConn.commit();
@@ -202,7 +203,7 @@ public class FlightRepository implements CrudRepository<Flight> {
             System.out.println("Transaction failed: " + e.getMessage());
         }
 
-        return null;
+        return flight;
     }
 
     @Override
@@ -324,38 +325,20 @@ public class FlightRepository implements CrudRepository<Flight> {
         }
     }
 
-    public void updateAvailableSeats(Flight entity) {
-        String select = "SELECT * FROM available_seats WHERE flightId = ? FOR UPDATE";
-        String delete = "DELETE FROM available_seats WHERE flightId = ?";
-        String insert = "INSERT INTO available_seats (seatId, flightId) VALUES (?, ?)";
+    public void updateAvailableSeats(int flightId, int seatId) {
+        String delete = "DELETE FROM available_seats WHERE flightId = ? AND seatId = ?";
 
         try {
-            PreparedStatement postgresSelectStmt = postgresConn.prepareStatement(select);
-            PreparedStatement mySelectStmt = myConn.prepareStatement(select);
             PreparedStatement postgresDeleteStmt = postgresConn.prepareStatement(delete);
             PreparedStatement myDeleteStmt = myConn.prepareStatement(delete);
-            PreparedStatement postgresInsertStmt = postgresConn.prepareStatement(insert);
-            PreparedStatement myInsertStmt = myConn.prepareStatement(insert);
 
-            postgresSelectStmt.setInt(1, entity.getFlightId());
-            ResultSet prs = postgresSelectStmt.executeQuery();
-            mySelectStmt.setInt(1, entity.getFlightId());
-            ResultSet mrs = mySelectStmt.executeQuery();
-
-            postgresDeleteStmt.setInt(1, entity.getFlightId());
+            postgresDeleteStmt.setInt(1, flightId);
+            postgresDeleteStmt.setInt(2, seatId);
             postgresDeleteStmt.executeUpdate();
-            myDeleteStmt.setInt(1, entity.getFlightId());
+
+            myDeleteStmt.setInt(1, flightId);
+            myDeleteStmt.setInt(2, seatId);
             myDeleteStmt.executeUpdate();
-
-            for(Seat s : entity.getAvailableSeats()) {
-                postgresInsertStmt.setInt(1, s.getSeatId());
-                postgresInsertStmt.setInt(2, entity.getFlightId());
-                postgresInsertStmt.executeUpdate();
-
-                myInsertStmt.setInt(1, s.getSeatId());
-                myInsertStmt.setInt(2, entity.getFlightId());
-                myInsertStmt.executeUpdate();
-            }
 
             postgresConn.commit();
             myConn.commit();

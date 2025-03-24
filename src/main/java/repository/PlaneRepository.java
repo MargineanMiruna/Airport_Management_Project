@@ -137,6 +137,7 @@ public class PlaneRepository implements CrudRepository<Plane> {
             JOIN airlines a ON a.airlineId = p.airlineId
             WHERE planeId = ?""";
         String query2 = "SELECT * FROM seats WHERE planeId = ?";
+        Plane plane = null;
 
         try {
             postgresConn.setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
@@ -149,7 +150,7 @@ public class PlaneRepository implements CrudRepository<Plane> {
 
             if (rs.next()) {
                 Airline airline = new Airline(rs.getInt("airlineId"), rs.getString("airlineName"), rs.getString("email"), rs.getString("phone"));
-                Plane plane = new Plane(
+                plane = new Plane(
                         rs.getInt("planeId"),
                         rs.getString("planeCode"),
                         airline,
@@ -169,7 +170,6 @@ public class PlaneRepository implements CrudRepository<Plane> {
                 }
 
                 plane.setSeatList(seats);
-                return plane;
             }
 
             postgresConn.commit();
@@ -178,7 +178,7 @@ public class PlaneRepository implements CrudRepository<Plane> {
             System.out.println("Transaction failed: " + e.getMessage());
         }
 
-        return null;
+        return plane;
     }
 
     @Override

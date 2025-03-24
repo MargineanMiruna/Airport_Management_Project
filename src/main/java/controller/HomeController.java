@@ -6,6 +6,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Scanner;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class HomeController {
     private final AirlineController airlineController;
@@ -339,6 +341,35 @@ public class HomeController {
                     }
                 }
             }
+        }
+    }
+
+    public void performConcurrentTransactions() {
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+
+        executor.submit(this::transaction1);
+        executor.submit(this::transaction2);
+
+        executor.shutdown();
+    }
+
+    private void transaction1() {
+        try {
+            bookingController.createBooking("1", 1, "100", List.of("carry_on", "checked_bag"));
+            System.out.println("Transaction 1 executing...");
+            Thread.sleep(2000);
+        } catch (Exception e) {
+            System.out.println("Transaction 1 failed: " + e.getMessage());
+        }
+    }
+
+    private void transaction2() {
+        try {
+            bookingController.createBooking("3", 2, "303", List.of("carry_on"));
+            System.out.println("Transaction 2 executing...");
+            Thread.sleep(2000);
+        } catch (Exception e) {
+            System.out.println("Transaction 2 failed: " + e.getMessage());
         }
     }
 
